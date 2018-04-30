@@ -1,0 +1,198 @@
+---
+title: "Data Science Specialization Capstone Week2"
+author: "Yue Li"
+date: "March 31, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,cache=TRUE)
+```
+
+## Background  
+
+The first step in this project is to understand the distribution and relationship between the words, tokens, and phrases in the text. This report will create a word frequency table, find the 1-gram, 2-gram and 3-gram term document matrix and conduct the exploratory analysis of the words.
+
+
+## Data Preparation  
+
+The training data is downloaded from the link below:  
+https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip  
+
+The zip file contains the followings:  
+
+1.en_US.blogs.txt  
+2.en_US.news.txt  
+3.en_US.twitter.txt   
+
+First, loading the packages that will be used in the report:  
+
+```{r packages, message=FALSE, warning=FALSE}
+library(tm)
+library(NLP)
+library(ggplot2)
+library(RWeka)
+library(ngram)
+library(slam)
+```
+
+
+Read in original data files and check the file size:  
+
+```{r readdata,warning=FALSE}
+## Read in Original Datasets
+setwd("C:/Users/i58197/Desktop/Coursera_SwiftKey/final/en_US/")
+twitter <- readLines(con <- file("en_US.twitter.txt"), encoding = "UTF-8", skipNul = TRUE)
+close(con)
+news <- readLines(con <- file("C:/Users/i58197/Desktop/Coursera_SwiftKey/final/en_US/en_US.news.txt"), encoding = "UTF-8", skipNul = TRUE)
+close(con)
+blogs <- readLines(con <- file("C:/Users/i58197/Desktop/Coursera_SwiftKey/final/en_US/en_US.blogs.txt"), encoding = "UTF-8", skipNul = TRUE)
+close(con)
+
+
+## Check number of lines
+
+twitter_len <- length(twitter)
+news_len <- length(news)
+blogs_len <- length(blogs)
+
+## Check file size
+twitter_size <- file.size("en_US.twitter.txt")/1024^2
+news_size <- file.size("en_US.news.txt")/1024^2
+blogs_size <- file.size("en_US.blogs.txt")/1024^2
+
+
+summary <- data.frame(c(twitter_len,news_len,blogs_len),c(twitter_size,news_size,blogs_size))
+
+colnames(summary)[1] <- c('Number of Length')
+colnames(summary)[2] <- c('File Size(MB)')
+
+summary
+```
+
+The amount of data in original dataset is huge, thus a 10% sub sample is used in the following analysis. Samples are saved in separate txt file for future repeated use.
+
+```{r subsample,eval = FALSE}
+# Choosen sample size 
+sample_size <- 0.1
+
+# Creating subsets
+twitter_index <- sample(seq_len(length(twitter)),length(twitter)*sample_size)
+news_index <- sample(seq_len(length(news)),length(news)*sample_size)
+blogs_index <- sample(seq_len(length(blogs)),length(blogs)*sample_size)
+
+twitter_sub <- twitter[twitter_index[]]
+writeLines(twitter_sub, con="twitter_sub.txt", "\n")
+news_sub <- news[news_index[]]
+writeLines(news_sub, con="news_sub.txt", "\n")
+blogs_sub <- blogs[blogs_index[]]
+writeLines(blogs_sub, con="blogs_sub.txt", "\n")
+```
+
+## Create Corpus and Clean Data  
+
+Create corpus and clean the corpus by removing profanity words and special symbols like punctuations and numbers. Profanity words are downloaded from:https://www.cs.cmu.edu/~biglou/resources/  
+
+```{r corpus}
+##Read in Sub-sample txt files for twitter, news and blogs
+corpus.folder <- "C:/Users/i58197/Desktop/Sub/"
+corpus <- VCorpus(DirSource(corpus.folder,encoding="UTF-8"))
+
+
+#Remove punctuation
+corpus <- tm_map(corpus,removePunctuation)
+#Remove numbers
+corpus <- tm_map(corpus,removeNumbers)
+#Remove whitespaces
+corpus <- tm_map(corpus,stripWhitespace)
+#Remove profanity words
+profanity <- readLines("C:/Users/i58197/Desktop/bad_words.txt")
+corpus <- tm_map(corpus,removeWords, profanity)
+#Remove non-ASCII
+removeNonASCII<-function(x) iconv(x, "latin1", "ASCII", sub="")
+corpus<-tm_map(corpus,content_transformer(removeNonASCII)) 
+
+
+#Convert to lowercase
+corpus <- tm_map(corpus,content_transformer(tolower))
+```
+
+
+
+## Build Term Document Matrix  
+
+Now we can analyze the word frequency in 1-gram, 2-gram and 3-gram categories:
+
+## 1-Gram
+
+```{r matrix}
+##1-gram
+corpus_tdm_1 <- TermDocumentMatrix(corpus)
+wordMatrix_1 <- as.data.frame((as.matrix(corpus_tdm_1)) ) 
+wordSort_1 <- sort(rowSums(wordMatrix_1),decreasing=TRUE)
+result_1 <- data.frame(word = names(wordSort_1),freq=wordSort_1)
+top_30_result_1 <- result_1[1:30,]
+top_30_result_1
+```
+
+
+## Plot top 30 Frequent 1-Gram
+
+```{r plot1}
+ggplot(data=top_30_result_1, aes(x=word, y=freq, fill=freq)) + geom_bar(stat="identity") +  guides(fill=FALSE) + theme(axis.text.x=element_text(angle=90))
+
+```
+
+## 2-Gram
+
+```{r matrix2}
+##2-gram
+bigram <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+corpus_tdm_2 <- TermDocumentMatrix(corpus,control = list(tokenize = bigram))
+wordMatrix_2 <- as.data.frame((as.matrix(corpus_tdm_2)) ) 
+wordSort_2 <- sort(rowSums(wordMatrix_2),decreasing=TRUE)
+result_2 <- data.frame(word = names(wordSort_2),freq=wordSort_2)
+top_30_result_2 <- result_2[1:30,]
+top_30_result_2
+```
+
+
+## Plot top 30 Frequent 2-Gram
+
+```{r plot2}
+ggplot(data=top_30_result_2, aes(x=word, y=freq, fill=freq)) + geom_bar(stat="identity") +  guides(fill=FALSE) + theme(axis.text.x=element_text(angle=90))
+
+```
+
+
+## 3-Gram
+
+```{r}
+##3-gram
+trigram <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
+corpus_tdm_3 <- TermDocumentMatrix(corpus,control = list(tokenize = trigram))
+wordMatrix_3 <- as.data.frame((as.matrix(corpus_tdm_3)) ) 
+wordSort_3 <- sort(rowSums(wordMatrix_3),decreasing=TRUE)
+result_3 <- data.frame(word = names(wordSort_3),freq=wordSort_3)
+top_30_result_3 <- result_3[1:30,]
+top_30_result_3
+```
+test <- table(wordSort_3)
+test
+
+## Plot top 30 Frequent 3-Gram
+
+```{r plot3}
+ggplot(data=top_30_result_3, aes(x=word, y=freq, fill=freq)) + geom_bar(stat="identity") +  guides(fill=FALSE) + theme(axis.text.x=element_text(angle=90))
+
+```
+
+
+## Next Step  
+
+For the final analysis, text modelling, and text prediction, we need to do the following studies:
+
+1.N-Gram modelling of the full text data sets  
+2.Optimize model for low memory utilization and faster processing.  
+3.Implement model as a Shiny App  
+
