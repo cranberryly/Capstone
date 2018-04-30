@@ -1,0 +1,24 @@
+---
+title: "Documentation"
+author: "Yue Li"
+date: "April 29, 2018"
+output: html_document
+---
+
+## How to use this app  
+
+
+1.In the left side panel, there are 2 user input sections: the input text box and the slider bar below it. 
+
+2.First input your statement in the text box
+
+3.The predicted word with highest possibility is expected to show up on the right side panel.
+
+4.Then you can click the slider bar and set the number of word candidates you want to see on the right side. The defualt setting is 4. You can put any integers between 1 and 20.
+
+5.Given your choice on slider bar, the corresponding number of candidate words will appear in the data table on the right side. They're ordered by their respective probabilities.
+
+
+
+
+
